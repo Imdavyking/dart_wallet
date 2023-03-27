@@ -2,16 +2,16 @@ import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
 import 'package:eip55/eip55.dart';
+import 'package:pointycastle/digests/keccak.dart';
 import 'package:pointycastle/digests/ripemd160.dart';
 import 'package:pointycastle/digests/sha256.dart';
-import 'package:pointycastle/digests/keccak.dart';
-import 'package:wallet/src/base58.dart';
-import 'package:wallet/src/bech32/segwit.dart';
-import 'package:wallet/src/bigint.dart';
-import 'package:wallet/src/der.dart';
-import 'package:wallet/src/private_key.dart';
-import 'package:wallet/src/public_key.dart';
 import 'package:sec/sec.dart';
+import 'base58.dart';
+import 'bech32/segwit.dart';
+import 'bigint.dart';
+import 'der.dart';
+import 'private_key.dart';
+import 'public_key.dart';
 
 const bitcoin = Bitcoin();
 const bitcoinbech32 = BitcoinBech32();
@@ -125,11 +125,12 @@ class Ethereum extends Coin {
 
   @override
   PublicKey createPublicKey(PrivateKey privateKey) =>
-      PublicKey(EC.secp256k1.createPublicKey(privateKey.value, false));
+      PublicKey(EC.secp256k1.createPublicKey(privateKey.value, true));
 
   @override
   String createAddress(PublicKey publicKey) {
-    final input = publicKey.value.sublist(1);
+    var compressed = EC.secp256k1.uncompressPublicKey(publicKey.value);
+    final input = compressed.sublist(1);
 
     final address = KeccakDigest(256).process(input);
     final w = address.skip(address.length - 20).toList();
@@ -142,7 +143,11 @@ class Ethereum extends Coin {
 
   @override
   Uint8List generateSignature(PrivateKey privateKey, Uint8List message) {
-    throw UnimplementedError();
+    final signature = EC.secp256k1.generateSignature(privateKey.value, message);
+
+    final sgn = toDER(signature);
+
+    return sgn;
   }
 
   @override
